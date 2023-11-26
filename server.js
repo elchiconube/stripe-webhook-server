@@ -43,4 +43,8 @@ app.post('/webhook', (request, response) => {
     }
 });
 
+app.get('/', async (req, res) => {
+    res.send('Hello World!');
+})
+
 app.listen(3003, () => console.log('Server running on port 3003'));
