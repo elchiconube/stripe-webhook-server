@@ -47,4 +47,4 @@ app.get('/', async (req, res) => {
     res.send('Hello World!');
 })
 
-app.listen(3003, () => console.log('Server running on port 3003'));
+app.listen(process.env.PORT, () => console.log('Server running on port 3003'));
