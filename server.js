@@ -1,50 +1,60 @@
-require('dotenv').config();
+#!/usr/bin/env -S npm run-script run
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const Stripe = require('stripe');
 const express = require('express');
+const env = require('dotenv');
+
+env.config();
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
 const app = express();
 
-const endpointSecret = 'whsec_883bbba51d722444b0126061b0fb347d8ce96f8e513369a76a758987b0c7f43c'
-
-// Middleware para manejar el cuerpo de la solicitud en bruto
-app.use('/webhook', express.raw({type: 'application/json'}));
-
-app.post('/webhook', (request, response) => {
-    const sig = request.headers['stripe-signature'];
-
-    console.log('Webhook received with signature:', sig);
-
-    let event;
-
-    try {
-        event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
-        console.log('Webhook event constructed:', event.type);
-    } catch (err) {
-        console.error(`Error in webhook signature verification: ${err.message}`);
-        return response.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    try {
-        // Aquí puedes añadir la lógica para manejar los diferentes tipos de eventos
-        switch (event.type) {
-            case 'checkout.session.completed':
-                console.log('Checkout session completed event received');
-                // Lógica para manejar evento checkout.session.completed
-                break;
-            // Añadir más casos para otros tipos de eventos según sea necesario
-            default:
-                console.warn(`Unhandled event type: ${event.type}`);
-        }
-
-        response.status(200).send('Event processed');
-    } catch (err) {
-        console.error(`Error handling event ${event.type}: ${err}`);
-        response.status(500).send('Server Error');
-    }
+// Use JSON parser for all non-webhook routes
+app.use((req, res, next) => {
+  if (req.originalUrl === '/webhook') {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
 });
 
-app.get('/', async (req, res) => {
-    res.send('Hello World!');
-})
+app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
+  const sig = req.headers['stripe-signature'];
 
-app.listen(process.env.PORT, () => console.log('Server running on port 3003'));
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+  } catch (err) {
+    // On error, log and return the error message
+    console.log(`❌ Error message: ${err.message}`);
+    res.status(400).send(`Webhook Error: ${err.message}`);
+    return;
+  }
+
+  // Successfully constructed event
+  console.log('✅ Success:', event.id);
+
+  // Handle the event
+  switch (event.type) {
+    case 'payment_intent.succeeded':
+      const paymentIntent = event.data.object;
+      console.log(`💰 PaymentIntent status: ${paymentIntent.status}`);
+      break;
+    case 'charge.succeeded':
+      const charge = event.data.object;
+      console.log(`💵 Charge id: ${charge.id}`);
+      break;
+    default:
+      console.warn(`🤷‍♀️ Unhandled event type: ${event.type}`);
+  }
+
+  // Return a response to acknowledge receipt of the event
+  res.json({received: true});
+});
+
+const server = app.listen(4242, () => {
+  console.log(`Webhook endpoint available at http://localhost:${server.address().port}/webhook`);
+});
