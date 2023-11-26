@@ -43,4 +43,4 @@ app.post('/webhook', (request, response) => {
     }
 });
 
-app.listen(4242, () => console.log('Server running on port 4242'));
+app.listen(3003, () => console.log('Server running on port 3003'));
