@@ -55,6 +55,6 @@ app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
   res.json({received: true});
 });
 
-const server = app.listen(4242, () => {
+const server = app.listen(process.env.PORT, () => {
   console.log(`Webhook endpoint available at http://localhost:${server.address().port}/webhook`);
 });
